@@ -1,0 +1,67 @@
+---
+- name: Atelier Ansible dans GitHub Codespaces
+  hosts: local
+  become: true
+
+  vars:
+    page_dest: /var/www/html/index.html
+
+  tasks:
+    - name: Mettre à jour le cache APT
+      apt:
+        update_cache: true
+
+    - name: Installer nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: S'assurer que le répertoire web existe
+      file:
+        path: /var/www/html
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Déployer la page HTML personnalisée
+      copy:
+        src: files/index.html
+        dest: "{{ page_dest }}"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Redémarrer nginx
+
+    - name: Activer nginx au démarrage
+      service:
+        name: nginx
+        enabled: true
+
+    - name: Démarrer nginx
+      service:
+        name: nginx
+        state: started
+
+    - name: Attendre que le service HTTP réponde
+      uri:
+        url: http://localhost
+        status_code: 200
+      register: test_http
+      retries: 5
+      delay: 2
+      until: test_http.status == 200
+
+    - name: Afficher le code HTTP retourné
+      debug:
+        msg: "Le serveur a répondu avec le code HTTP {{ test_http.status }}"
+
+    - name: Afficher un extrait du contenu retourné
+      debug:
+        msg: "{{ test_http.content[:120] if test_http.content is defined else 'Aucun contenu retourné' }}"
+
+  handlers:
+    - name: Redémarrer nginx
+      service:
+        name: nginx
+        state: restarted
