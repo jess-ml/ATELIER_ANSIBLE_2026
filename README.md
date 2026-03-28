@@ -1,11 +1,12 @@
 ------------------------------------------------------------------------------------------------------
 ATELIER ANSIBLE
 ------------------------------------------------------------------------------------------------------
-L’idée en 30 secondes : Cet atelier met en œuvre un **mini-PRA** sur **Kubernetes** en déployant une **application Flask** avec une **base SQLite** stockée sur un **volume persistant (PVC pra-data)** et des **sauvegardes automatiques réalisées chaque minute vers un second volume (PVC pra-backup)** via un **CronJob**. L’**image applicative est construite avec Packer** et le **déploiement orchestré avec Ansible**, tandis que Kubernetes assure la gestion des pods et de la disponibilité applicative. Nous observerons la différence entre **disponibilité** (recréation automatique des pods sans perte de données) et **reprise après sinistre** (perte volontaire du volume de données puis restauration depuis les backups), nous mesurerons concrètement les RTO et RPO, et comprendrons les limites d’un PRA local non répliqué. Cet atelier illustre de manière pratique les principes de continuité et de reprise d’activité, ainsi que le rôle respectif des conteneurs, du stockage persistant et des mécanismes de sauvegarde.
+L’idée en 30 secondes : Dans cet atelier, vous allez apprendre à **automatiser le déploiement d’un serveur web avec Ansible**, directement depuis GitHub **Codespaces**, sans infrastructure complexe. L’objectif est de comprendre comment **décrire un état cible** (installer, configurer, déployer) et laisser l’outil l’appliquer automatiquement, de manière reproductible et idempotente. On passe ainsi d’une logique manuelle à une logique DevOps industrialisée.
   
 **Architecture cible :** Ci-dessous, voici l'architecture cible souhaitée.   
   
-![Screenshot Actions](Architecture_cible.png)  
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/8064eb95-da73-4bdd-9ef2-a7cebbbd71c8" />
+  
   
 -------------------------------------------------------------------------------------------------------
 Séquence 1 : Codespace de Github
@@ -28,12 +29,11 @@ Vous allez dans cette séquence mettre en place votre environnement et les logic
 **Installation de Ansible et Nginx**  
 ```
 sudo apt update
-sudo apt install -y ansible nginx curl
+sudo apt install -y ansible curl
 ```
 **Vérifier l’environnement**  
 ```
 ansible --version
-nginx -v
 curl --version
 ```
 **Tester la cible locale**  
@@ -134,147 +134,104 @@ exit
 ```
 
 ---------------------------------------------------
-Séquence 4 : 💥 Scénarios de crash possibles  
+Séquence 4 : Exercices  
 Difficulté : Facile (~30 minutes)
 ---------------------------------------------------
-### 🎬 **Scénario 1 : PCA — Crash du pod**  
-Nous allons dans ce scénario **détruire notre Pod Kubernetes**. Ceci simulera par exemple la supression d'un pod accidentellement, ou un pod qui crash, ou un pod redémarré, etc..
+### Exercice 1 : Customisation de la page d'accueil 
+Customisez la page d'accueil de votre site Web en ajoutant la ligne suivante dans votre fichier index.html  
+```
+<h1>Déploiement réalisé par [Votre Nom]</h1>
+```
 
-**Destruction du pod :** Ci-dessous, la cible de notre scénario   
-  
-![Screenshot Actions](scenario1.png)  
-
-Nous perdons donc ici notre application mais pas notre base de données puisque celle-ci est déposée dans le PVC pra-data hors du pod.  
-
-Copier/coller le code suivant dans votre terminal Codespace pour détruire votre pod :
+### Exercice 2 : Paramétrer dynamiquement votre serveur avec Ansible 
+Voici le contenu (contenu imposé) de votre nouveau fichier index.html    
 ```
-kubectl -n pra get pods
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ page_title }}</title>
+</head>
+<body>
+  <h1>{{ page_title }}</h1>
+  <p>Déployé par : {{ author }}</p>
+  <p>Utilisateur système : {{ app_user }}</p>
+</body>
+</html>
 ```
-Notez le nom de votre pod qui est différent pour tout le monde.  
-Supprimez votre pod (pensez à remplacer <nom-du-pod-flask> par le nom de votre pod).  
-Exemple : kubectl -n pra delete pod flask-7c4fd76955-abcde  
-```
-kubectl -n pra delete pod <nom-du-pod-flask>
-```
-**Vérification de la suppression de votre pod**
-```
-kubectl -n pra get pods
-```
-👉 **Le pod a été reconstruit sous un autre identifiant**.  
-Forward du port 8080 du nouveau service  
-```
-kubectl -n pra port-forward svc/flask 8080:80 >/tmp/web.log 2>&1 &
-```
-Observez le résultat en ligne  
-https://...**/consultation** -> Vous n'avez perdu aucun message.
-  
-👉 Kubernetes gère tout seul : Aucun impact sur les données ou sur votre service (PVC conserve la DB et le pod est reconstruit automatiquement) -> **C'est du PCA**. Tout est automatique et il n'y a aucune rupture de service.
+Modifier votre playbook afin de :  
+* Créer un title contenant le texte suivant : "Serveur déployé avec Ansible"
+* L'auteur sera : "Votre nom"
+* L'utilisateur sera un **utilisateur Linux** : "Votre prénom"
   
 ---------------------------------------------------
-### 🎬 **Scénario 2 : PRA - Perte du PVC pra-data** 
-Nous allons dans ce scénario **détruire notre PVC pra-data**. C'est à dire nous allons suprimer la base de données en production. Ceci simulera par exemple la corruption de la BDD SQLite, le disque du node perdu, une erreur humaine, etc. 💥 Impact : IL s'agit ici d'un impact important puisque **la BDD est perdue**.  
-
-**Destruction du PVC pra-data :** Ci-dessous, la cible de notre scénario   
-  
-![Screenshot Actions](scenario2.png)  
-
-🔥 **PHASE 1 — Simuler le sinistre (perte de la BDD de production)**  
-Copier/coller le code suivant dans votre terminal Codespace pour détruire votre base de données :
-```
-kubectl -n pra scale deployment flask --replicas=0
-```
-```
-kubectl -n pra patch cronjob sqlite-backup -p '{"spec":{"suspend":true}}'
-```
-```
-kubectl -n pra delete job --all
-```
-```
-kubectl -n pra delete pvc pra-data
-```
-👉 Vous pouvez vérifier votre application en ligne, la base de données est détruite et la service n'est plus accéssible.  
-
-✅ **PHASE 2 — Procédure de restauration**  
-Recréer l’infrastructure avec un PVC pra-data vide.  
-```
-kubectl apply -f k8s/
-```
-Vérification de votre application en ligne.  
-Forward du port 8080 du service pour tester l'application en ligne.  
-```
-kubectl -n pra port-forward svc/flask 8080:80 >/tmp/web.log 2>&1 &
-```
-https://...**/count** -> =0.  
-https://...**/consultation** Vous avez perdu tous vos messages.  
-
-Retaurez votre BDD depuis le PVC Backup.  
-```
-kubectl apply -f pra/50-job-restore.yaml
-```
-👉 Vous pouvez vérifier votre application en ligne, **votre base de données a été restaureé** et tous vos messages sont bien présents.  
-
-Relance des CRON de sauvgardes.  
-```
-kubectl -n pra patch cronjob sqlite-backup -p '{"spec":{"suspend":false}}'
-```
-👉 Nous n'avons pas perdu de données mais Kubernetes ne gère pas la restauration tout seul. Nous avons du protéger nos données via des sauvegardes régulières (du PVC pra-data vers le PVC pra-backup). -> **C'est du PRA**. Il s'agit d'une stratégie de sauvegarde avec une procédure de restauration.  
-
----------------------------------------------------
-Séquence 5 : Exercices  
+Séquence 5 : Questions  
 Difficulté : Moyenne (~45 minutes)
 ---------------------------------------------------
 **Complétez et documentez ce fichier README.md** pour répondre aux questions des exercices.  
 Faites preuve de pédagogie et soyez clair dans vos explications et procedures de travail.  
 
-**Exercice 1 :**  
-Quels sont les composants dont la perte entraîne une perte de données ?  
+**Question 1 :**  
+Pourquoi Ansible est-il qualifié d’outil "déclaratif" ?    
   
 *..Répondez à cet exercice ici..*
 
-**Exercice 2 :**  
-Expliquez nous pourquoi nous n'avons pas perdu les données lors de la supression du PVC pra-data  
+**Question 2 :**  
+Pourquoi l’utilisation de variables est-elle essentielle dans un playbook ?  
   
 *..Répondez à cet exercice ici..*
 
-**Exercice 3 :**  
-Quels sont les RTO et RPO de cette solution ?  
+**Question 3 :**  
+En quoi Ansible facilite-t-il la gestion de plusieurs serveurs ?  
   
 *..Répondez à cet exercice ici..*
 
-**Exercice 4 :**  
-Pourquoi cette solution (cet atelier) ne peux pas être utilisé dans un vrai environnement de production ? Que manque-t-il ?   
+**Question 4 :**  
+Quels sont les avantages et les limites d’Ansible dans un contexte DevOps ?   
   
 *..Répondez à cet exercice ici..*
   
-**Exercice 5 :**  
-Proposez une archtecture plus robuste.   
+**Question 5 :**  
+Quelle est la différence entre les modules copy et template dans Ansible ?   
   
 *..Répondez à cet exercice ici..*
 
 ---------------------------------------------------
-Séquence 6 : Ateliers  
-Difficulté : Moyenne (~2 heures)
+Séquence 6 : Atelier  
+Difficulté : Moyenne (~1 heure)
 ---------------------------------------------------
-### **Atelier 1 : Ajoutez une fonctionnalité à votre application**  
-**Ajouter une route GET /status** dans votre application qui affiche en JSON :
-* count : nombre d’événements en base
-* last_backup_file : nom du dernier backup présent dans /backup
-* backup_age_seconds : âge du dernier backup
+### Structurer votre déploiement Ansible afin de pouvoir choisir entre un rôle DEV ou un rôle PROD  
+Modifier votre fichier playbook.yml afin de pouvoir choisir entre un rôle DEV ou un rôle PROD.  
 
-*..**Déposez ici une copie d'écran** de votre réussite..*
-
+**Resultats attendus**  
+* Déploiement en DEV  
+```
+ansible-playbook -i inventory.ini playbook.yml --limit dev
+```
+```
+app_name: "Application DEV"
+env: "dev"
+author: "Etudiant DEV"
+```
+* Déploiement en PROD
+```
+ansible-playbook -i inventory.ini playbook.yml --limit prod
+```
+```
+app_name: "Application PROD"
+env: "prod"
+author: "Equipe Ops""
+```
 ---------------------------------------------------
-### **Atelier 2 : Choisir notre point de restauration**  
-Aujourd’hui nous restaurobs “le dernier backup”. Nous souhaitons **ajouter la capacité de choisir un point de restauration**.
+### Zoom sur votre environnement Codepace 
+Codepace est un outil proposer par GitHub soumit à quota (4$/mois). Si vous dépasser votre quota mensuel vous ne serez plus en mesure de pouvoir utiliser Codespace. C'est pourquoi à **la fin de votre atelier, pensez à suprimer votre Codespace après avoir mis à jour votre GitHub**.  
 
-*..Décrir ici votre procédure de restauration (votre runbook)..*  
-  
 ---------------------------------------------------
 Evaluation
 ---------------------------------------------------
-Cet atelier PRA PCA, **noté sur 20 points**, est évalué sur la base du barème suivant :  
-- Série d'exerices (5 points)
-- Atelier N°1 - Ajout d'un fonctionnalité (4 points)
-- Atelier N°2 - Choisir son point de restauration (4 points)
-- Qualité du Readme (lisibilité, erreur, ...) (3 points)
-- Processus travail (quantité de commits, cohérence globale, interventions externes, ...) (4 points) 
+Cet atelier ANSIBLE, **noté sur 20 points**, est évalué sur la base du barème suivant :  
+- Mise en oeuvre (2 points)
+- Exercice N°1 - Customisation de la page d'accueil (2 points)
+- Exercice N°2 - Paramétrer dynamiquement votre serveur avec Ansible (2 points)
+- Questions + Qualité du Readme (lisibilité, erreur, ...) (5 points)
+- Atelier - Rôles DEV et PROD (6 points)
+- Processus travail (quantité de commits, cohérence globale, interventions externes, ...) (3 points) 
