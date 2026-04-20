@@ -105,13 +105,13 @@ En quoi Ansible facilite-t-il la gestion de plusieurs serveurs ?
 **Question 4 :**  
 Quels sont les avantages et les limites d’Ansible dans un contexte DevOps ?   
   
-*Avantages : * Agentless (sans agent) : Ne nécessite aucune installation de logiciel sur les serveurs cibles (utilise simplement SSH et Python).
+**Avantages :** Agentless (sans agent) : Ne nécessite aucune installation de logiciel sur les serveurs cibles (utilise simplement SSH et Python).
 
 Lisibilité : Utilise le format YAML, très facile à lire et à écrire pour des humains, ce qui facilite la collaboration entre développeurs et ops.
 
 Idempotence : Applique uniquement les changements nécessaires.
 
-Limites : * Moins adapté que des outils comme Terraform pour la création pure d'infrastructure cloud (le provisioning de réseaux ou de machines virtuelles).
+**Limites :** Moins adapté que des outils comme Terraform pour la création pure d'infrastructure cloud (le provisioning de réseaux ou de machines virtuelles).
 
 Peut devenir complexe à déboguer sur des erreurs très spécifiques.
 
@@ -120,9 +120,9 @@ Les performances peuvent être un défi sur de très grands parcs informatiques 
 **Question 5 :**  
 Quelle est la différence entre les modules copy et template dans Ansible ?   
   
-*Le module copy est utilisé pour transférer un fichier statique de la machine de contrôle (Ansible) vers le serveur cible, à l'octet près.
+**Le module copy** est utilisé pour transférer un fichier statique de la machine de contrôle (Ansible) vers le serveur cible, à l'octet près.
 
-Le module template utilise le moteur Jinja2 pour lire le fichier source, l'analyser, et remplacer dynamiquement les variables (balises {{ variable }}) par leurs valeurs définies dans le playbook avant d'envoyer le résultat sur le serveur cible.*
+**Le module template** utilise le moteur Jinja2 pour lire le fichier source, l'analyser, et remplacer dynamiquement les variables (balises {{ variable }}) par leurs valeurs définies dans le playbook avant d'envoyer le résultat sur le serveur cible.
 
 ---------------------------------------------------
 Séquence 5 : Atelier  
