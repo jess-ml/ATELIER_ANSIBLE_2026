@@ -1,6 +1,6 @@
 ---
 - name: Atelier Ansible dans GitHub Codespaces - version durcie avec remédiation
-  hosts: local
+  hosts: all
   become: true
   gather_facts: true
 
@@ -10,6 +10,13 @@
     yarn_repo_disabled_file: /etc/apt/sources.list.d/yarn.list.disabled
 
   tasks:
+    - name: Afficher les variables de l'environnement ciblé
+      debug:
+        msg:
+          - "app_name: {{ app_name }}"
+          - "env: {{ env }}"
+          - "author: {{ author }}"
+          
     - name: Afficher le système cible
       debug:
         msg:
@@ -52,7 +59,7 @@
         mode: "0755"
 
     - name: Déployer la page HTML personnalisée
-      copy:
+      template:
         src: files/index.html
         dest: "{{ page_dest }}"
         owner: root

@@ -90,27 +90,39 @@ Faites preuve de pédagogie et soyez clair dans vos explications et procedures d
 **Question 1 :**  
 Pourquoi Ansible est-il qualifié d’outil "déclaratif" ?    
   
-*..Répondez à cet exercice ici..*
+*..Ansible est qualifié d'outil déclaratif car l'utilisateur décrit l'état final souhaité du système (par exemple : "le paquet Nginx doit être présent", "le service doit être démarré"), plutôt que de fournir la liste exacte des commandes bash pour y parvenir. C'est Ansible qui se charge de vérifier l'état actuel du système et de déterminer les actions nécessaires (ou non) pour atteindre cet état cible. Cela garantit également l'idempotence (le fait de pouvoir relancer le script sans tout casser)...*
 
 **Question 2 :**  
 Pourquoi l’utilisation de variables est-elle essentielle dans un playbook ?  
   
-*..Répondez à cet exercice ici..*
+*..Les variables rendent un playbook dynamique et réutilisable. Sans elles, les valeurs seraient écrites en "dur" dans le code (hardcodées). Grâce aux variables, on peut utiliser exactement le même playbook pour déployer des environnements très différents (comme le DEV et la PROD) simplement en modifiant le fichier de variables ou en passant des paramètres lors de l'exécution, sans jamais toucher à la logique du code source...*
 
 **Question 3 :**  
 En quoi Ansible facilite-t-il la gestion de plusieurs serveurs ?  
   
-*..Répondez à cet exercice ici..*
+*..Ansible gère la multiplicité grâce à son fichier d'inventaire. Il suffit de lister les adresses IP ou les noms d'hôtes de plusieurs serveurs (en les regroupant par catégories, ex: [webservers], [dbservers]) pour qu'Ansible puisse s'y connecter simultanément via SSH. Une seule commande ansible-playbook permet de configurer 1, 10 ou 100 serveurs en parallèle, garantissant que tous auront exactement la même configuration, éliminant ainsi les erreurs humaines liées aux tâches manuelles répétitives...*
 
 **Question 4 :**  
 Quels sont les avantages et les limites d’Ansible dans un contexte DevOps ?   
   
-*..Répondez à cet exercice ici..*
+*Avantages : * Agentless (sans agent) : Ne nécessite aucune installation de logiciel sur les serveurs cibles (utilise simplement SSH et Python).
+
+Lisibilité : Utilise le format YAML, très facile à lire et à écrire pour des humains, ce qui facilite la collaboration entre développeurs et ops.
+
+Idempotence : Applique uniquement les changements nécessaires.
+
+Limites : * Moins adapté que des outils comme Terraform pour la création pure d'infrastructure cloud (le provisioning de réseaux ou de machines virtuelles).
+
+Peut devenir complexe à déboguer sur des erreurs très spécifiques.
+
+Les performances peuvent être un défi sur de très grands parcs informatiques sans une configuration d'optimisation (tuning)...*
   
 **Question 5 :**  
 Quelle est la différence entre les modules copy et template dans Ansible ?   
   
-*..Répondez à cet exercice ici..*
+*Le module copy est utilisé pour transférer un fichier statique de la machine de contrôle (Ansible) vers le serveur cible, à l'octet près.
+
+Le module template utilise le moteur Jinja2 pour lire le fichier source, l'analyser, et remplacer dynamiquement les variables (balises {{ variable }}) par leurs valeurs définies dans le playbook avant d'envoyer le résultat sur le serveur cible.*
 
 ---------------------------------------------------
 Séquence 5 : Atelier  
